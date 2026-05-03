@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>플랜트 토목/건축 실적 현황 대시보드 – 자푸라2 (SACE2)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#eef1f6; --surface:#fff; --border:#dde2ec; --border-lt:#eef0f5;
+  --t1:#18202e; --t2:#4a5568; --t3:#8693a8;
+  --navy:#1a3a6b; --navy2:#2554a0;
+  --blue:#3478d4; --blue-lt:#ebf2ff;
+  --teal:#0d7a5c; --teal-lt:#e5f5f0;
+  --red:#c8312a; --red-lt:#fdecea;
+  --amber:#c07000; --amber-lt:#fff4e0;
+  --green:#1a6e3c; --green-lt:#e6f5ed;
+  --gray:#f4f6fa;
+  --brown:#7c4a1e; --brown-lt:#fdf3e8;
+  --r:6px; --sh:0 1px 4px rgba(0,0,0,.09);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Malgun Gothic','Apple SD Gothic Neo',-apple-system,sans-serif;
+     background:var(--bg);color:var(--t1);font-size:12px;line-height:1.5}
+
+/* ── 헤더 ── */
+.hdr{background:var(--navy);height:48px;padding:0 20px;display:flex;align-items:center;justify-content:space-between}
+.hdr-brand{display:flex;align-items:center;gap:10px}
+.hdr-badge{background:rgba(255,255,255,.18);color:#fff;font-size:9px;font-weight:800;padding:3px 7px;border-radius:3px;letter-spacing:.5px}
+.hdr-title{color:#fff;font-size:15px;font-weight:700;letter-spacing:-.3px}
+.hdr-date{color:rgba(255,255,255,.7);font-size:10px}
+
+/* ── 도메인 탭 ── */
+.domain-bar{background:#12294f;display:flex;padding:0 20px}
+.domain-btn{height:36px;padding:0 22px;font-size:12px;font-weight:600;
+  color:rgba(255,255,255,.5);background:none;border:none;
+  border-bottom:3px solid transparent;cursor:pointer;transition:all .15s}
+.domain-btn:hover{color:rgba(255,255,255,.85)}
+.domain-btn.active{color:#fff;border-bottom-color:#5ba3ff}
+.domain-btn.active.bld{border-bottom-color:#f5a623}
+
+/* ── 현장 탭 ── */
+.site-bar{background:#1a3560;display:flex;padding:0 20px;border-top:1px solid rgba(255,255,255,.08)}
+.site-label{height:30px;display:flex;align-items:center;font-size:9px;font-weight:700;
+  color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-right:8px}
+.site-btn{height:30px;padding:0 16px;font-size:11px;font-weight:600;
+  color:rgba(255,255,255,.45);background:none;border:none;
+  border-bottom:2px solid transparent;cursor:pointer;transition:all .15s}
+.site-btn:hover{color:rgba(255,255,255,.8)}
+.site-btn.on{color:#fff;border-bottom-color:#7ec8e3}
+
+/* ── PKG 필터 ── */
+.pkg-bar{background:#fff;border-bottom:1px solid var(--border);
+  padding:6px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pkg-label{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.pkg-btn{padding:3px 13px;font-size:11px;font-weight:600;border-radius:4px;
+  border:1px solid var(--border);background:var(--gray);color:var(--t2);
+  cursor:pointer;transition:all .12s}
+.pkg-btn:hover{border-color:var(--blue);color:var(--blue)}
+.pkg-btn.on{background:var(--navy2);color:#fff;border-color:var(--navy2)}
+.pkg-btn.on.bld{background:var(--amber);border-color:var(--amber)}
+.ref-lbl{margin-left:auto;font-size:10px;color:var(--t3)}
+.ref-lbl b{color:var(--t2)}
+
+/* ── 메인 ── */
+.main{padding:12px 20px 32px;display:flex;flex-direction:column;gap:14px}
+
+/* ── KPI 행 ── */
+.kpi-row{display:grid;gap:8px}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+  padding:11px 14px;box-shadow:var(--sh);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--kc,var(--blue))}
+.kpi-lbl{font-size:9px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.kpi-val{font-size:22px;font-weight:800;line-height:1.1;margin:2px 0 4px}
+.kpi-val em{font-size:12px;font-weight:500;color:var(--t2)}
+.kpi-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.kpi-plan{font-size:10px;color:var(--t3)}
+.pill{display:inline-flex;align-items:center;padding:2px 7px;border-radius:3px;
+  font-size:10px;font-weight:700}
+.pill.up{background:var(--green-lt);color:var(--green)}
+.pill.dn{background:var(--red-lt);color:var(--red)}
+.pill.eq{background:var(--gray);color:var(--t2)}
+.kpi-qty{font-size:9px;color:var(--t3);margin-top:3px}
+
+/* ── 섹션 카드 ── */
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+  box-shadow:var(--sh);display:flex;flex-direction:column}
+.card-head{padding:9px 14px;border-bottom:1px solid var(--border-lt);
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--gray);flex-shrink:0;gap:8px}
+.card-head h3{font-size:11px;font-weight:700;color:var(--t1);white-space:nowrap}
+.card-head .sub{font-size:9px;color:var(--t3);white-space:nowrap}
+.card-legend{display:flex;gap:10px;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--t3)}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.chart-area{padding:10px 14px;flex:1;min-height:0;position:relative}
+.chart-area canvas{width:100%!important}
+
+/* ── 3단 그리드 ── */
+.mid-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch}
+.mid-row>.card{flex:1}
+
+/* ── 실적 테이블 ── */
+.tbl-wrap{overflow-x:auto}
+.rtbl{width:100%;border-collapse:collapse;font-size:10.5px}
+.rtbl th{padding:5px 8px;text-align:center;font-size:9px;font-weight:700;
+  color:var(--t3);text-transform:uppercase;letter-spacing:.3px;
+  background:var(--gray);border-bottom:2px solid var(--border);
+  border-right:1px solid var(--border-lt);white-space:nowrap}
+.rtbl th.lft{text-align:left}
+.rtbl td{padding:5px 8px;border-bottom:1px solid var(--border-lt);
+  border-right:1px solid var(--border-lt);white-space:nowrap;
+  font-variant-numeric:tabular-nums;text-align:right}
+.rtbl td.lft{text-align:left;font-weight:600;color:var(--t1)}
+.rtbl td.date{text-align:center;color:var(--t2);font-size:10px;font-weight:600}
+.rtbl tr:hover td{background:#f8faff}
+.rtbl .plan-row td{background:var(--blue-lt);font-weight:700}
+.rtbl .plan-row.bld td{background:var(--amber-lt)}
+.rtbl .latest td{background:#fffbeb}
+.rtbl .grp-hdr td{background:var(--navy);color:#fff;font-weight:700;font-size:10px}
+.rtbl .sum-row td{background:#edf2ff;font-weight:700;border-top:2px solid var(--border)}
+.rtbl .sum-row.bld td{background:var(--amber-lt)}
+
+/* 진도바 */
+.prog-wrap{display:flex;align-items:center;gap:5px;min-width:90px}
+.prog-track{flex:1;height:6px;background:#e2e8f2;border-radius:3px;position:relative;overflow:hidden}
+.prog-plan{height:6px;position:absolute;border-radius:3px;background:#b8c8e0}
+.prog-act{height:6px;position:absolute;border-radius:3px;z-index:2}
+.prog-act.ok{background:var(--teal)}
+.prog-act.ng{background:var(--red)}
+.prog-act.bld{background:var(--amber)}
+.prog-pct{font-size:9px;min-width:32px;text-align:right;color:var(--t2);font-weight:700}
+
+/* ── 진도율 요약 배너 ── */
+.rate-banner{display:grid;gap:8px;padding:8px 14px;background:var(--gray);
+  border-bottom:1px solid var(--border-lt)}
+
+/* ── daily row colors ── */
+.d-pos{color:var(--teal);font-weight:700}
+.d-pos.bld{color:var(--amber)}
+.d-neg{color:var(--red)}
+.d-nil{color:#ccc}
+
+/* ── section divider ── */
+.section-label{font-size:10px;font-weight:700;color:var(--t3);
+  text-transform:uppercase;letter-spacing:.6px;
+  padding:2px 0 6px;border-bottom:1px solid var(--border);margin-bottom:4px}
+
+/* ── 반응형 ── */
+@media(max-width:1080px){.mid-row{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.mid-row{grid-template-columns:1fr};.kpi-row{grid-template-columns:repeat(2,1fr)!important}}
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="hdr">
+  <div class="hdr-brand">
+    <span class="hdr-badge">현대건설</span>
+    <span class="hdr-title">플랜트 토목/건축 실적 현황 <span style="font-size:11px;font-weight:400;opacity:.6">Key Quantities</span></span>
+  </div>
+  <span class="hdr-date" id="today"></span>
+</div>
+
+<!-- 도메인 탭 -->
+<div class="domain-bar">
+  <button class="domain-btn active"  id="tab-civil" onclick="setDomain('civil')">🏗 토목 (Civil)</button>
+  <button class="domain-btn bld"     id="tab-bld"   onclick="setDomain('bld')">🏢 건축 (Building)</button>
+</div>
+
+<!-- 현장 탭 -->
+<div class="site-bar">
+  <span class="site-label">현장</span>
+  <div id="site-btns" style="display:flex"></div>
+  <div class="ref-lbl" style="margin-left:auto;color:rgba(255,255,255,.55);font-size:10px">기준일 <b id="ref-date" style="color:rgba(255,255,255,.85)"></b></div>
+</div>
+
+<!-- 메인 -->
+<div class="main" id="main"></div>
+
+<script>
+// ═══════════════════════════════════════
+// 공통 유틸
+// ═══════════════════════════════════════
+const f0  = v => v==null?'—':(+v).toLocaleString('ko',{maximumFractionDigits:0});
+const f1  = v => v==null?'—':(+v).toLocaleString('ko',{minimumFractionDigits:1,maximumFractionDigits:1});
+const fp  = v => v==null?'—':(v*100).toFixed(1)+'%';
+const DAY = ['일','월','화','수','목','금','토'];
+function fmtDate(d){ return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${DAY[d.getDay()]})`; }
+
+const CHARTS = {};
+function destroyCharts(){ Object.values(CHARTS).forEach(c=>c&&c.destroy()); for(const k in CHARTS) delete CHARTS[k]; }
+
+// ═══════════════════════════════════════
+// DATA ─ 토목 (CIVIL)
+// ═══════════════════════════════════════
+const CIVIL = {
+  id:'sace2-civil', name:'자푸라2 (SACE2)', refDateLabel: '2026. 04. 28',
+  pkgs:['PKG1','PKG2'],
+  workTypes:[
+    {id:'fdn',   label:'FDN Concrete',    unit:'m³', total:{PKG1:37711.79, PKG2:588}},
+    {id:'pav',   label:'Concrete Paving', unit:'m³', total:{PKG1:14631,    PKG2:0}},
+    {id:'sb',    label:'Sump & Basin',    unit:'m³', total:{PKG1:12384.7,  PKG2:205}},
+    {id:'ditch', label:'Ditch & Trench',  unit:'m³', total:{PKG1:20414.135,PKG2:396}},
+  ],
+  plan:{
+    PKG1:{fdn:{weekly:329.0,cumul:35235.0,pct:0.9343},pav:{weekly:303.2,cumul:3150.0,pct:0.2153},sb:{weekly:0,cumul:10665.0,pct:0.8611},ditch:{weekly:140.0,cumul:13058.0,pct:0.6397}},
+    PKG2:{fdn:{weekly:20,cumul:50,pct:.0850},pav:{weekly:0,cumul:0,pct:0},sb:{weekly:0,cumul:0,pct:0},ditch:{weekly:15,cumul:15,pct:.0379}},
+  },
+                                          actual:{
+    PKG1:{fdn:{cumul:34294.14,pct:0.9094},pav:{cumul:4815.3,pct:0.3291},sb:{cumul:11333.0,pct:0.9151},ditch:{cumul:14173.0,pct:0.6943}},
+    PKG2:{fdn:{cumul:114.0,pct:0.1939},pav:{cumul:0.0,pct:0},sb:{cumul:0.0,pct:0.0},ditch:{cumul:53.5,pct:0.1351}},
+  },
+  // 누계 진도율 추이 (주 단위) — act: 실적, plan: 계획
+  trend:[
+    {wk:'W13',
+      PKG1:{fdn:{act:0.8847,plan:0.9343},pav:{act:0.2554,plan:0.2153},sb:{act:0.9114,plan:0.8611},ditch:{act:0.6686,plan:0.6397}},
+      PKG2:{fdn:{act:0.085,plan:0.085},pav:{act:0,plan:0},sb:{act:0.0,plan:0.0},ditch:{act:0.0884,plan:0.0379}}},
+    {wk:'W14',
+      PKG1:{fdn:{act:0.8934,plan:0.9343},pav:{act:0.2795,plan:0.2153},sb:{act:0.9132,plan:0.8611},ditch:{act:0.6836,plan:0.6397}},
+      PKG2:{fdn:{act:0.085,plan:0.085},pav:{act:0,plan:0},sb:{act:0.0,plan:0.0},ditch:{act:0.1225,plan:0.0379}}},
+    {wk:'W15',
+      PKG1:{fdn:{act:0.8956,plan:0.9343},pav:{act:0.2885,plan:0.2153},sb:{act:0.9132,plan:0.8611},ditch:{act:0.6838,plan:0.6397}},
+      PKG2:{fdn:{act:0.085,plan:0.085},pav:{act:0,plan:0},sb:{act:0.0,plan:0.0},ditch:{act:0.1225,plan:0.0379}}},
+    {wk:'W16',
+      PKG1:{fdn:{act:0.8968,plan:0.9343},pav:{act:0.2951,plan:0.2153},sb:{act:0.9132,plan:0.8611},ditch:{act:0.6874,plan:0.6397}},
+      PKG2:{fdn:{act:0.1224,plan:0.085},pav:{act:0,plan:0},sb:{act:0.0,plan:0.0},ditch:{act:0.1351,plan:0.0379}}},
+    {wk:'W17',
+      PKG1:{fdn:{act:0.9007,plan:0.9343},pav:{act:0.3084,plan:0.2153},sb:{act:0.9151,plan:0.8611},ditch:{act:0.6874,plan:0.6397}},
+      PKG2:{fdn:{act:0.1939,plan:0.085},pav:{act:0,plan:0},sb:{act:0.0,plan:0.0},ditch:{act:0.1351,plan:0.0379}}},
+    {wk:'W18',
+      PKG1:{fdn:{act:0.9094,plan:0.9343},pav:{act:0.3291,plan:0.2153},sb:{act:0.9151,plan:0.8611},ditch:{act:0.6943,plan:0.6397}},
+      PKG2:{fdn:{act:0.1939,plan:0.085},pav:{act:0,plan:0},sb:{act:0.0,plan:0.0},ditch:{act:0.1351,plan:0.0379}}},
+  ],
+  daily:[
+    {date:new Date(2026,2,26),wk:'W13',
+     PKG1:{fdn:{d:null,c:33363.0},pav:{d:null,c:3736.6},sb:{d:null,c:11288.0},ditch:{d:null,c:13649.0}},
+     PKG2:{fdn:{d:null,c:50.0},pav:{d:null,c:null},sb:{d:null,c:null},ditch:{d:null,c:35.0}}},
+    {date:new Date(2026,3,2),wk:'W14',
+     PKG1:{fdn:{d:330.0,c:33693.0},pav:{d:352.6,c:4089.2},sb:{d:22.0,c:11310.0},ditch:{d:306.0,c:13955.0}},
+     PKG2:{fdn:{d:null,c:50.0},pav:{d:null,c:null},sb:{d:null,c:null},ditch:{d:13.5,c:48.5}}},
+    {date:new Date(2026,3,9),wk:'W15',
+     PKG1:{fdn:{d:82.0,c:33775.0},pav:{d:132.0,c:4221.2},sb:{d:null,c:11310.0},ditch:{d:5.0,c:13960.0}},
+     PKG2:{fdn:{d:null,c:50.0},pav:{d:null,c:null},sb:{d:null,c:null},ditch:{d:null,c:48.5}}},
+    {date:new Date(2026,3,16),wk:'W16',
+     PKG1:{fdn:{d:43.14,c:33818.14},pav:{d:96.3,c:4317.5},sb:{d:null,c:11310.0},ditch:{d:73.0,c:14033.0}},
+     PKG2:{fdn:{d:22.0,c:72.0},pav:{d:null,c:null},sb:{d:null,c:null},ditch:{d:5.0,c:53.5}}},
+    {date:new Date(2026,3,23),wk:'W17',
+     PKG1:{fdn:{d:147.0,c:33965.14},pav:{d:194.6,c:4512.1},sb:{d:23.0,c:11333.0},ditch:{d:null,c:14033.0}},
+     PKG2:{fdn:{d:42.0,c:114.0},pav:{d:null,c:null},sb:{d:null,c:null},ditch:{d:null,c:53.5}}},
+    {date:new Date(2026,3,28),latest:true,wk:'W18',
+     PKG1:{fdn:{d:329.0,c:34294.14},pav:{d:303.2,c:4815.3},sb:{d:null,c:11333.0},ditch:{d:140.0,c:14173.0}},
+     PKG2:{fdn:{d:null,c:114.0},pav:{d:null,c:null},sb:{d:null,c:null},ditch:{d:null,c:53.5}}},
+
+  ],
+};// ═══════════════════════════════════════
+// DATA ─ 건축 (BLD)
+// ═══════════════════════════════════════
+const BLD = {
+  id:'sace2-bld', name:'자푸라2 (SACE2)', refDateLabel: '2026. 04. 28',
+  pkgs:['PKG1','PKG2','PKG3'],
+  workTypes:[
+    {id:'conc', label:'Structural Concrete', unit:'m\u00b3', total:{PKG1:14737.25,PKG2:13294.71,PKG3:11220.04}},
+    {id:'fin',  label:'Finishing Works',     unit:'m\u00b2', total:{PKG1:29514.22,PKG2:47193.62,PKG3:42110.70}},
+  ],
+  plan:{
+    PKG1:{conc:{weekly:0,cumul:14737.25,pct:1.0},fin:{weekly:0,cumul:29412.84,pct:0.9966}},
+    PKG2:{conc:{weekly:0,cumul:12382.89,pct:0.9314},fin:{weekly:0,cumul:19309.78,pct:0.4092}},
+    PKG3:{conc:{weekly:0,cumul:10238.11,pct:0.9125},fin:{weekly:0,cumul:15133.09,pct:0.3594}},
+  },
+                      actual:{
+    PKG1:{conc:{cumul:14737.25,pct:1.0},fin:{cumul:29394.61,pct:0.9959}},
+    PKG2:{conc:{cumul:11855.37,pct:0.8917},fin:{cumul:27690.03,pct:0.5867}},
+    PKG3:{conc:{cumul:10263.91,pct:0.9148},fin:{cumul:18789.85,pct:0.4462}},
+  },
+  // 누계 진도율 추이 (주 단위) — act: 실적, plan: 계획
+  trend:[
+    {wk:'W13',
+     PKG1:{conc:{act:1.0,plan:1.0},fin:{act:0.9957,plan:0.9963}},
+     PKG2:{conc:{act:0.8703,plan:0.9314},fin:{act:0.4937,plan:0.4092}},
+     PKG3:{conc:{act:0.8709,plan:0.9125},fin:{act:0.4225,plan:0.3594}}},
+    {wk:'W14',
+     PKG1:{conc:{act:1.0,plan:1.0},fin:{act:0.9959,plan:0.9966}},
+     PKG2:{conc:{act:0.8718,plan:0.9314},fin:{act:0.4973,plan:0.4092}},
+     PKG3:{conc:{act:0.8807,plan:0.9125},fin:{act:0.427,plan:0.3594}}},
+    {wk:'W15',
+     PKG1:{conc:{act:1.0,plan:1.0},fin:{act:0.9959,plan:0.9966}},
+     PKG2:{conc:{act:0.8751,plan:0.9314},fin:{act:0.4976,plan:0.4092}},
+     PKG3:{conc:{act:0.8872,plan:0.9125},fin:{act:0.4337,plan:0.3594}}},
+    {wk:'W16',
+     PKG1:{conc:{act:1.0,plan:1.0},fin:{act:0.9959,plan:0.9966}},
+     PKG2:{conc:{act:0.8788,plan:0.9314},fin:{act:0.4979,plan:0.4092}},
+     PKG3:{conc:{act:0.9017,plan:0.9125},fin:{act:0.4409,plan:0.3594}}},
+    {wk:'W17',
+     PKG1:{conc:{act:1.0,plan:1.0},fin:{act:0.9959,plan:0.9966}},
+     PKG2:{conc:{act:0.8867,plan:0.9314},fin:{act:0.5263,plan:0.4092}},
+     PKG3:{conc:{act:0.9115,plan:0.9125},fin:{act:0.4461,plan:0.3594}}},
+    {wk:'W18',
+     PKG1:{conc:{act:1.0,plan:1.0},fin:{act:0.9959,plan:0.9966}},
+     PKG2:{conc:{act:0.8917,plan:0.9314},fin:{act:0.5867,plan:0.4092}},
+     PKG3:{conc:{act:0.9148,plan:0.9125},fin:{act:0.4462,plan:0.3594}}},
+  ],
+  daily:[
+    {date:new Date(2026,2,26),wk:'W13',
+     PKG1:{conc:{d:null,c:14737.25},fin:{d:null,c:29386.61}},
+     PKG2:{conc:{d:null,c:11570.0},fin:{d:null,c:23298.51}},
+     PKG3:{conc:{d:null,c:9771.02},fin:{d:null,c:17790.11}}},
+    {date:new Date(2026,3,2),wk:'W14',
+     PKG1:{conc:{d:null,c:14737.25},fin:{d:8.0,c:29394.61}},
+     PKG2:{conc:{d:20.0,c:11590.0},fin:{d:170.0,c:23468.51}},
+     PKG3:{conc:{d:110.0,c:9881.02},fin:{d:190.0,c:17980.11}}},
+    {date:new Date(2026,3,9),wk:'W15',
+     PKG1:{conc:{d:null,c:14737.25},fin:{d:null,c:29394.61}},
+     PKG2:{conc:{d:44.0,c:11634.0},fin:{d:14.0,c:23482.51}},
+     PKG3:{conc:{d:73.02,c:9954.04},fin:{d:282.0,c:18262.11}}},
+    {date:new Date(2026,3,16),wk:'W16',
+     PKG1:{conc:{d:null,c:14737.25},fin:{d:null,c:29394.61}},
+     PKG2:{conc:{d:48.83,c:11682.83},fin:{d:15.52,c:23498.03}},
+     PKG3:{conc:{d:163.02,c:10117.06},fin:{d:303.74,c:18565.85}}},
+    {date:new Date(2026,3,23),wk:'W17',
+     PKG1:{conc:{d:null,c:14737.25},fin:{d:null,c:29394.61}},
+     PKG2:{conc:{d:105.5,c:11788.33},fin:{d:1340.0,c:24838.03}},
+     PKG3:{conc:{d:110.0,c:10227.06},fin:{d:221.0,c:18786.85}}},
+    {date:new Date(2026,3,28),latest:true,wk:'W18',
+     PKG1:{conc:{d:null,c:14737.25},fin:{d:null,c:29394.61}},
+     PKG2:{conc:{d:67.04,c:11855.37},fin:{d:2852.0,c:27690.03}},
+     PKG3:{conc:{d:36.85,c:10263.91},fin:{d:3.0,c:18789.85}}},
+
+
+
+
+
+
+
+
+
+
+  ],
+};// ═══════════════════════════════════════
+// 상태 관리
+// ═══════════════════════════════════════
+let curSite   = 'SACE2';
+let curDomain = 'civil';
+let curPkg    = 'ALL';
+
+const SITES = {
+  'SACE2': { label:'자푸라2 (SACE2)', civil: CIVIL, bld: BLD },
+  // 향후 현장 추가 예시:
+  // 'SACE3': { label:'자푸라3 (SACE3)', civil: CIVIL_SACE3, bld: BLD_SACE3 },
+};
+
+function site()    { return SITES[curSite][curDomain]; }
+function isBld()   { return curDomain === 'bld'; }
+function pkgList() {
+  return site().pkgs;  // 항상 전체 PKG
+}
+
+function renderSiteBar() {
+  document.getElementById('site-btns').innerHTML =
+    Object.keys(SITES).map(s =>
+      '<button class="site-btn' + (s === curSite ? ' on' : '') +
+      '" onclick="setSite(\'' + s + '\')">' + SITES[s].label + '</button>'
+    ).join('');
+}
+
+function setSite(s) {
+  curSite = s;
+  curPkg  = 'ALL';
+  renderSiteBar();
+  renderPkgBar();
+  render();
+}
+
+function agg(wtId) {
+  const s = site(), pkgs = pkgList();
+  const wt = s.workTypes.find(w => w.id === wtId);
+  let total = 0, planC = 0, actC = 0;
+  pkgs.forEach(p => {
+    total += (wt.total[p] || 0);
+    planC += ((s.plan[p]   && s.plan[p][wtId]   && s.plan[p][wtId].cumul)   || 0);
+    actC  += ((s.actual[p] && s.actual[p][wtId] && s.actual[p][wtId].cumul) || 0);
+  });
+  const planPct = total ? planC / total : 0;
+  const actPct  = total ? actC  / total : 0;
+  return { total, planC, actC, planPct, actPct };
+}
+
+function setDomain(d) {
+  curDomain = d;
+  document.querySelectorAll('.domain-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + d).classList.add('active');
+  curPkg = 'ALL';
+  renderSiteBar();
+  renderPkgBar();
+  render();
+}
+
+function renderPkgBar() {
+  // PKG 버튼 제거 — 기준일만 업데이트
+  const el = document.getElementById('ref-date');
+  if (el) el.textContent = site().refDateLabel;
+}
+
+function setPkg(p) { /* 미사용 */ }
+
+function mkChart(id, cfg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (CHARTS[id]) CHARTS[id].destroy();
+  CHARTS[id] = new Chart(el, cfg);
+}
+
+// ═══════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════
+function render(){
+  destroyCharts();
+  const s=site(), wts=s.workTypes, b=isBld();
+  const accent=b?'var(--amber)':'var(--teal)';
+  const accentHex=b?'#c07000':'#0d7a5c';
+
+  // ── KPI 행 ──
+  const kpiColors=b
+    ?['#c07000','#0d7a5c','#2554a0']
+    :['#2554a0','#0d7a5c','#c07000','#7c4a1e'];
+  let kpiHTML=`<div class="kpi-row" style="grid-template-columns:repeat(${wts.length},1fr)">`;
+  wts.forEach((wt,i)=>{
+    const d=agg(wt.id); if(!d.total) return;
+    const dv=(d.actPct-d.planPct)*100, cls=dv>.05?'up':dv<-.05?'dn':'eq', sg=dv>0?'+':'';
+    kpiHTML+=`<div class="kpi" style="--kc:${kpiColors[i]}">
+      <div class="kpi-lbl">${wt.label}</div>
+      <div class="kpi-val">${(d.actPct*100).toFixed(1)}<em>%</em></div>
+      <div class="kpi-meta">
+        <span class="kpi-plan">계획 ${fp(d.planPct)}</span>
+        <span class="pill ${cls}">${sg}${dv.toFixed(1)}%p</span>
+      </div>
+      <div class="kpi-qty">실적 ${f0(d.actC)} / 전체 ${f0(d.total)} ${wt.unit}</div>
+    </div>`;
+  });
+  kpiHTML+='</div>';
+
+  // ── 누계 진도율 추이 데이터 준비 ──
+  const trendLabels=s.trend.map(t=>t.wk);
+  const pkgs=pkgList();
+
+  // ── 6주 주별 평균 실적 바 ──
+  // 주 구분: daily 데이터의 wk 필드 기준
+  const wkMap={};
+  s.daily.forEach(row=>{
+    const wk=row.wk||'?';
+    if(!wkMap[wk]) wkMap[wk]=[];
+    wkMap[wk].push(row);
+  });
+  // 최신주 포함 최근 6주
+  const allWks=Object.keys(wkMap);
+  const recentWks=allWks.slice(-6);
+  const weekLabels=recentWks;
+
+  const barSets=[];
+  const barColors=['#2554a0','#0d7a5c','#c07000','#c8312a'];
+  wts.forEach((wt,wi)=>{
+    const vals=recentWks.map(wk=>{
+      const rows=wkMap[wk];
+      let sum=0, cnt=0;
+      rows.forEach(row=>{
+        pkgs.forEach(p=>{
+          const v=(row[p]&&row[p][wt.id]&&row[p][wt.id].d);
+          if(v!=null && v>0){ sum+=v; cnt++; }
+        });
+      });
+      return cnt>0 ? +((sum/cnt).toFixed(1)) : null;
+    });
+    barSets.push({
+      label:wt.label.replace(' Concrete','').replace(' Works',''),
+      data:vals,
+      backgroundColor:barColors[wi%barColors.length]+'cc',
+      borderColor:barColors[wi%barColors.length],
+      borderWidth:1, borderRadius:3,
+    });
+  });
+
+  // ── 현재 진도율 바 ──
+  const rateLabels=[], ratePlan=[], rateAct=[];
+  wts.forEach(wt=>{
+    pkgList().forEach(pkg=>{
+      if(!(wt.total[pkg])) return;
+      rateLabels.push(`${wt.label.split(' ')[0]}\n${pkg}`);
+      const pl=(s.plan[pkg]&&s.plan[pkg][wt.id]&&s.plan[pkg][wt.id].pct)||0;
+      const ac=(s.actual[pkg]&&s.actual[pkg][wt.id]&&s.actual[pkg][wt.id].pct)||0;
+      ratePlan.push(+(pl*100).toFixed(1));
+      rateAct.push(+(ac*100).toFixed(1));
+    });
+  });
+
+  // ── HTML 조립 ──
+  const domLabel=b?`<span style="background:var(--amber-lt);color:var(--amber);font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:6px">Building</span>`
+                  :`<span style="background:var(--blue-lt);color:var(--navy2);font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:6px">Civil</span>`;
+
+  document.getElementById('main').innerHTML = kpiHTML + `
+
+  <!-- 섹션: 누계 진도율 추이 -->
+  <div class="section-label">📈 누계 진도율 추이 (공종별) ${domLabel}</div>
+
+  ${!b
+    // ── 토목: PKG별 행 구성 (PKG1 행 4칸, PKG2 행 4칸) ──
+    ? s.pkgs.map((pkg,pi)=>{
+        const pkgBg=['#2554a0','#0d7a5c','#c07000','#c8312a'];
+        const col=pkgBg[pi%pkgBg.length];
+        return `
+  <div style="display:flex;align-items:center;gap:6px;margin:6px 0 4px">
+    <span style="font-size:10px;font-weight:700;color:#fff;background:${col};padding:2px 10px;border-radius:3px">${pkg}</span>
+    <span style="font-size:9px;color:var(--t3)">누계 진도율 추이</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px">
+    ${wts.map((wt,wi)=>`
+    <div class="card">
+      <div class="card-head" style="padding:6px 12px">
+        <h3 style="font-size:10px;white-space:nowrap">${wt.label}</h3>
+        <div style="display:flex;gap:5px;align-items:center;margin-left:auto">
+          <span style="display:flex;align-items:center;gap:3px;font-size:8px;color:var(--t3)">
+            <span style="display:inline-block;width:10px;height:7px;background:${col}44;border:1px solid ${col};border-radius:1px"></span>실적
+          </span>
+          <span style="display:flex;align-items:center;gap:3px;font-size:8px;color:var(--t3)">
+            <span style="display:inline-block;width:10px;height:0;border-top:2px dashed ${col}"></span>계획
+          </span>
+        </div>
+      </div>
+      <div class="chart-area" style="height:130px"><canvas id="ch-trend-${wt.id}-${pkg}"></canvas></div>
+    </div>`).join('')}
+  </div>`;
+      }).join('')
+    // ── 건축: PKG1/2/3 한 행에 공종 2개씩 6칸 ──
+    : `<div style="display:flex;gap:10px;margin-bottom:6px">
+    ${s.pkgs.map((pkg,pi)=>{
+        const pkgBg=['#2554a0','#0d7a5c','#c07000'];
+        const col=pkgBg[pi%pkgBg.length];
+        return `<div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="font-size:10px;font-weight:700;color:#fff;background:${col};padding:2px 10px;border-radius:3px">${pkg}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+        ${wts.map((wt,wi)=>`
+        <div class="card">
+          <div class="card-head" style="padding:6px 12px">
+            <h3 style="font-size:10px;white-space:nowrap">${wt.label}</h3>
+            <div style="display:flex;gap:4px;align-items:center;margin-left:auto">
+              <span style="display:flex;align-items:center;gap:2px;font-size:8px;color:var(--t3)">
+                <span style="display:inline-block;width:9px;height:7px;background:${col}44;border:1px solid ${col};border-radius:1px"></span>실적
+              </span>
+              <span style="display:flex;align-items:center;gap:2px;font-size:8px;color:var(--t3)">
+                <span style="display:inline-block;width:9px;height:0;border-top:2px dashed ${col}"></span>계획
+              </span>
+            </div>
+          </div>
+          <div class="chart-area" style="height:130px"><canvas id="ch-trend-${wt.id}-${pkg}"></canvas></div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+      }).join('')}
+  </div>`
+  }
+
+  <!-- 섹션: 주별 평균 실적 / 누계 진도율 바 -->
+  <div class="section-label">📊 실적 분석 ${domLabel}</div>
+
+  <div class="mid-row" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+
+    <!-- 주별 평균 실적 바 -->
+    <div class="card">
+      <div class="card-head">
+        <h3>주별 평균 일일 실적 (최근 6주)</h3>
+        <div class="card-legend" id="leg-daily"></div>
+        <span class="sub">단위: ${wts.map(w=>w.unit).filter((v,i,a)=>a.indexOf(v)===i).join('/')}/일(평균)</span>
+      </div>
+      <div class="chart-area" style="height:190px"><canvas id="ch-daily"></canvas></div>
+    </div>
+
+    <!-- PKG별 현재 진도율 -->
+    <div class="card">
+      <div class="card-head">
+        <h3>공종 × PKG 현재 진도율 (%)</h3>
+        <div class="card-legend">
+          <span class="leg-item"><span class="leg-dot" style="background:#b8c8e0"></span>계획</span>
+          <span class="leg-item"><span class="leg-dot" style="background:${accentHex}"></span>실적</span>
+        </div>
+      </div>
+      <div class="chart-area" style="height:190px"><canvas id="ch-rate"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- 섹션: 계획 대비 실적 + 일일실적 테이블 -->
+  <div class="section-label">📋 계획 대비 실적 현황</div>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:10px;align-items:start">
+    <div>${buildSummaryTable()}</div>
+    <div>${buildDailyTable()}</div>
+  </div>
+  `;
+
+  // ── 차트 렌더 ──
+  requestAnimationFrame(()=>{
+    // 1) PKG × 공종 개별 차트 — 데이터 없으면 0으로 표시
+    const pkgChartColors=['#2554a0','#0d7a5c','#c07000','#c8312a'];
+
+    s.pkgs.forEach((pkg,pi)=>{
+      const col=pkgChartColors[pi%pkgChartColors.length];
+      s.workTypes.forEach((wt,wi)=>{
+        // 데이터 없어도 차트 렌더 (0값으로 표시)
+        const actVals=s.trend.map(t=>
+          (t[pkg]&&t[pkg][wt.id]!=null) ? +(t[pkg][wt.id].act*100).toFixed(1) : 0
+        );
+        const planVals=s.trend.map(t=>
+          (t[pkg]&&t[pkg][wt.id]!=null) ? +(t[pkg][wt.id].plan*100).toFixed(1) : 0
+        );
+        mkChart(`ch-trend-${wt.id}-${pkg}`,{
+          type:'bar',
+          data:{labels:trendLabels, datasets:[
+            {
+              type:'bar', label:'실적',
+              data:actVals,
+              backgroundColor:col+'44', borderColor:col,
+              borderWidth:1, borderRadius:2,
+              barPercentage:0.55, categoryPercentage:0.7, order:2,
+            },
+            {
+              type:'line', label:'계획',
+              data:planVals,
+              borderColor:col, backgroundColor:'transparent',
+              borderWidth:1.5, borderDash:[5,3],
+              pointRadius:2.5, pointHoverRadius:4,
+              tension:.3, fill:false, order:1,
+            },
+          ]},
+          options:{
+            responsive:true, maintainAspectRatio:false,
+            plugins:{
+              legend:{display:true, position:'bottom',
+                labels:{font:{size:8}, boxWidth:10, padding:4,
+                  generateLabels(chart){
+                    return chart.data.datasets.map((ds,i)=>({
+                      text:ds.label,
+                      fillStyle:ds.type==='bar'?ds.backgroundColor:'transparent',
+                      strokeStyle:ds.borderColor,
+                      lineWidth:ds.type==='line'?1.5:1,
+                      lineDash:ds.borderDash||[],
+                      hidden:false, datasetIndex:i
+                    }));
+                  }
+                }
+              },
+              tooltip:{mode:'index',intersect:false,
+                callbacks:{label:c=>`${c.dataset.label}: ${c.raw!=null?c.raw+'%':'—'}`}
+              }
+            },
+            scales:{
+              x:{grid:{display:false},ticks:{font:{size:8},color:'#8693a8'}},
+              y:{min:0,max:100,
+                ticks:{font:{size:8},color:'#8693a8',callback:v=>v+'%'},
+                grid:{color:'#f0f2f6'}
+              }
+            }
+          }
+        });
+      });
+    });
+
+    // 2) 주별 평균 실적 바
+    mkChart('ch-daily',{
+      type:'bar', data:{labels:weekLabels, datasets:barSets},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{display:true,position:'bottom',labels:{font:{size:8},boxWidth:10,padding:6}},
+          tooltip:{mode:'index',intersect:false,callbacks:{label:c=>`${c.dataset.label}: ${c.raw!=null?c.raw:'—'} (평균/일)`}}
+        },
+        scales:{
+          x:{grid:{display:false},ticks:{font:{size:8}}},
+          y:{ticks:{font:{size:8},callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},grid:{color:'#f0f2f6'}}
+        }
+      }
+    });
+
+    // 3) 진도율 가로 바
+    mkChart('ch-rate',{
+      type:'bar',
+      data:{labels:rateLabels, datasets:[
+        {label:'계획',data:ratePlan,backgroundColor:'#b8c8e0',borderRadius:3,barPercentage:.55},
+        {label:'실적',data:rateAct, backgroundColor:accentHex+'cc',borderColor:accentHex,borderWidth:1,borderRadius:3,barPercentage:.55},
+      ]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        indexAxis:'y',
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw}%`}}
+        },
+        scales:{
+          x:{min:0,max:100,ticks:{font:{size:8},callback:v=>v+'%'},grid:{color:'#f0f2f6'}},
+          y:{grid:{display:false},ticks:{font:{size:8}}}
+        }
+      }
+    });
+  });
+}
+
+// ═══════════════════════════════════════
+// 계획 대비 실적 요약 테이블
+// ═══════════════════════════════════════
+function buildSummaryTable(){
+  const s=site(), b=isBld(), pkgs=pkgList();
+  let trs='';
+  let gtotal=0,gplanC=0,gactC=0;
+
+  s.workTypes.forEach(wt=>{
+    // 공종 소계
+    let wtTotal=0,wtPlanC=0,wtActC=0;
+    pkgs.forEach(p=>{
+      wtTotal+=(wt.total[p]||0);
+      wtPlanC+=((s.plan[p]&&s.plan[p][wt.id]&&s.plan[p][wt.id].cumul)||0);
+      wtActC +=((s.actual[p]&&s.actual[p][wt.id]&&s.actual[p][wt.id].cumul)||0);
+    });
+    if(!wtTotal) return;
+    gtotal+=wtTotal; gplanC+=wtPlanC; gactC+=wtActC;
+    const planPct=wtPlanC/wtTotal, actPct=wtActC/wtTotal;
+    const dv=(actPct-planPct)*100, cls=dv>.05?'up':dv<-.05?'dn':'eq', sg=dv>0?'+':'';
+    const pP=Math.min(100,planPct*100), pA=Math.min(100,actPct*100);
+    const actClr=dv<-.05?'var(--red)':b?'var(--amber)':'var(--teal)';
+
+    trs+=`<tr>
+      <td class="lft">${wt.label}<br><span style="font-size:8px;color:var(--t3)">(${wt.unit})</span></td>
+      <td>${f0(wtTotal)}</td>
+      <td style="color:var(--navy2);font-weight:700">${f0(wtPlanC)}<br><small>${fp(planPct)}</small></td>
+      <td style="color:${actClr};font-weight:700">${f0(wtActC)}<br><small>${fp(actPct)}</small></td>
+      <td><span class="pill ${cls}">${sg}${dv.toFixed(1)}</span></td>
+      <td>
+        <div class="prog-wrap">
+          <div class="prog-track">
+            <div class="prog-plan" style="width:${pP}%"></div>
+            <div class="prog-act ${dv<-.05?'ng':b?'bld':'ok'}" style="width:${pA}%"></div>
+          </div>
+          <span class="prog-pct">${(actPct*100).toFixed(1)}%</span>
+        </div>
+      </td>
+      <td style="color:var(--red)">${f0(wtTotal-wtActC)}</td>
+    </tr>`;
+
+    // PKG별 세부 (ALL 선택시)
+    if(curPkg==='ALL'){
+      pkgs.forEach(pkg=>{
+        const tt=(wt.total[pkg])||0; if(!tt) return;
+        const pc=((s.plan[pkg]&&s.plan[pkg][wt.id]&&s.plan[pkg][wt.id].cumul)||0);
+        const ac=((s.actual[pkg]&&s.actual[pkg][wt.id]&&s.actual[pkg][wt.id].cumul)||0);
+        const pp=tt?pc/tt:0, ap=tt?ac/tt:0;
+        const pdv=(ap-pp)*100, pcls=pdv>.05?'up':pdv<-.05?'dn':'eq', psg=pdv>0?'+':'';
+        const pActClr=pdv<-.05?'var(--red)':b?'var(--amber)':'var(--teal)';
+        trs+=`<tr style="font-size:10px">
+          <td class="lft" style="padding-left:16px;color:var(--t3)">└ ${pkg}</td>
+          <td style="color:var(--t3)">${f0(tt)}</td>
+          <td style="color:var(--navy2)">${f0(pc)} <small>${fp(pp)}</small></td>
+          <td style="color:${pActClr}">${f0(ac)} <small>${fp(ap)}</small></td>
+          <td><span class="pill ${pcls}" style="font-size:9px">${psg}${pdv.toFixed(1)}</span></td>
+          <td>
+            <div class="prog-wrap">
+              <div class="prog-track">
+                <div class="prog-plan" style="width:${Math.min(100,pp*100)}%"></div>
+                <div class="prog-act ${pdv<-.05?'ng':b?'bld':'ok'}" style="width:${Math.min(100,ap*100)}%"></div>
+              </div>
+              <span class="prog-pct" style="font-size:8px">${(ap*100).toFixed(1)}%</span>
+            </div>
+          </td>
+          <td style="color:var(--red)">${f0(tt-ac)}</td>
+        </tr>`;
+      });
+    }
+  });
+
+  // 합계
+  const gpp=gtotal?gplanC/gtotal:0, gap=gtotal?gactC/gtotal:0;
+  const gdv=(gap-gpp)*100, gcls=gdv>.05?'up':gdv<-.05?'dn':'eq', gsg=gdv>0?'+':'';
+  trs+=`<tr class="sum-row${b?' bld':''}">
+    <td class="lft">합 계</td>
+    <td>${f0(gtotal)}</td>
+    <td style="color:var(--navy2);font-weight:800">${f0(gplanC)}<br><small>${fp(gpp)}</small></td>
+    <td style="color:${gdv<-.05?'var(--red)':b?'var(--amber)':'var(--teal)'};font-weight:800">${f0(gactC)}<br><small>${fp(gap)}</small></td>
+    <td><span class="pill ${gcls}">${gsg}${gdv.toFixed(1)}</span></td>
+    <td>
+      <div class="prog-wrap">
+        <div class="prog-track">
+          <div class="prog-plan" style="width:${Math.min(100,gpp*100)}%"></div>
+          <div class="prog-act ${gdv<-.05?'ng':b?'bld':'ok'}" style="width:${Math.min(100,gap*100)}%"></div>
+        </div>
+        <span class="prog-pct">${(gap*100).toFixed(1)}%</span>
+      </div>
+    </td>
+    <td style="color:var(--red)">${f0(gtotal-gactC)}</td>
+  </tr>`;
+
+  return `<div class="card">
+    <div class="card-head">
+      <h3>📊 계획 대비 실적 현황</h3>
+      <span class="sub">기준: ${site().refDateLabel} | ${curPkg==='ALL'?'전체':curPkg}</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="rtbl">
+        <thead><tr>
+          <th class="lft" style="width:120px">공종</th>
+          <th>전체물량</th>
+          <th style="color:var(--navy2)">계획누적</th>
+          <th style="color:${b?'var(--amber)':'var(--teal)'}">실적누적</th>
+          <th>편차(%p)</th>
+          <th style="width:110px">진도율</th>
+          <th style="color:var(--red)">잔여</th>
+        </tr></thead>
+        <tbody>${trs}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// 일일 실적 테이블
+// ═══════════════════════════════════════
+function buildDailyTable(){
+  const s=site(), b=isBld(), pkgs=pkgList(), wts=s.workTypes;
+  const activeWts=wts.filter(wt=>pkgs.some(p=>(wt.total[p]||0)>0));
+
+  // thead 2단
+  let th1=`<th rowspan="2" class="lft" style="min-width:80px">날짜</th>`;
+  let th2='';
+  activeWts.forEach(wt=>{
+    th1+=`<th colspan="${pkgs.length*2}" class="grp-th" style="background:${b?'#8c5a0d':s.pkgs.length>1?'var(--navy)':'var(--navy)'};color:#fff">${wt.label.replace(' Concrete','').replace(' Works','')}</th>`;
+    pkgs.forEach(p=>{
+      th2+=`<th style="font-size:8px">${p}<br>일일</th><th style="font-size:8px">${p}<br>누적</th>`;
+    });
+  });
+
+  // tbody
+  let tbRows='';
+  s.daily.forEach(row=>{
+    const isLatest=!!row.latest;
+    let tds=`<td class="date${isLatest?' latest-mark':''}">${fmtDate(row.date)}${isLatest?' ★':''}</td>`;
+    activeWts.forEach(wt=>{
+      pkgs.forEach(p=>{
+        const cell=(row[p]&&row[p][wt.id])||{};
+        const d=cell.d, c=cell.c;
+        const dCls=d!=null?(b?'d-pos bld':'d-pos'):'d-nil';
+        tds+=`<td class="${dCls}">${d!=null?f1(d):'—'}</td>`;
+        tds+=`<td style="color:var(--t2)">${c!=null?f0(c):'—'}</td>`;
+      });
+    });
+    tbRows+=`<tr class="${isLatest?'latest':''}">${tds}</tr>`;
+  });
+
+  // 계획 행
+  let planTds=`<td class="date" style="color:${b?'var(--amber)':'var(--navy2)'};font-weight:700">W15 계획</td>`;
+  activeWts.forEach(wt=>{
+    pkgs.forEach(p=>{
+      const pl=(s.plan[p]&&s.plan[p][wt.id])||{};
+      planTds+=`<td style="color:${b?'var(--amber)':'var(--navy2)'};font-weight:700">${pl.weekly!=null?f1(pl.weekly):'—'}</td>`;
+      planTds+=`<td style="color:${b?'var(--amber)':'var(--navy2)'};font-weight:700">${pl.cumul!=null?f0(pl.cumul):'—'}</td>`;
+    });
+  });
+  tbRows+=`<tr class="plan-row${b?' bld':''}">${planTds}</tr>`;
+
+  return `<div class="card">
+    <div class="card-head">
+      <h3>📋 일일 실적 현황</h3>
+      <span class="sub">★ 최근 기준일 &nbsp;|&nbsp; W15 주간 계획 포함</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="rtbl">
+        <thead><tr>${th1}</tr><tr>${th2}</tr></thead>
+        <tbody>${tbRows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  const now=new Date();
+  document.getElementById('today').textContent=
+    `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  renderPkgBar();
+  render();
+});
+</script>
+</body>
+</html>
