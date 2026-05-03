@@ -207,7 +207,7 @@ const CIVIL = {
     PKG1:{fdn:{weekly:329.0,cumul:35235.0,pct:0.9343},pav:{weekly:303.2,cumul:3150.0,pct:0.2153},sb:{weekly:0,cumul:10665.0,pct:0.8611},ditch:{weekly:140.0,cumul:13058.0,pct:0.6397}},
     PKG2:{fdn:{weekly:20,cumul:50,pct:.0850},pav:{weekly:0,cumul:0,pct:0},sb:{weekly:0,cumul:0,pct:0},ditch:{weekly:15,cumul:15,pct:.0379}},
   },
-                                          actual:{
+                                            actual:{
     PKG1:{fdn:{cumul:34294.14,pct:0.9094},pav:{cumul:4815.3,pct:0.3291},sb:{cumul:11333.0,pct:0.9151},ditch:{cumul:14173.0,pct:0.6943}},
     PKG2:{fdn:{cumul:114.0,pct:0.1939},pav:{cumul:0.0,pct:0},sb:{cumul:0.0,pct:0.0},ditch:{cumul:53.5,pct:0.1351}},
   },
@@ -268,7 +268,7 @@ const BLD = {
     PKG2:{conc:{weekly:0,cumul:12382.89,pct:0.9314},fin:{weekly:0,cumul:19309.78,pct:0.4092}},
     PKG3:{conc:{weekly:0,cumul:10238.11,pct:0.9125},fin:{weekly:0,cumul:15133.09,pct:0.3594}},
   },
-                      actual:{
+                        actual:{
     PKG1:{conc:{cumul:14737.25,pct:1.0},fin:{cumul:29394.61,pct:0.9959}},
     PKG2:{conc:{cumul:11855.37,pct:0.8917},fin:{cumul:27690.03,pct:0.5867}},
     PKG3:{conc:{cumul:10263.91,pct:0.9148},fin:{cumul:18789.85,pct:0.4462}},
@@ -325,6 +325,7 @@ const BLD = {
      PKG1:{conc:{d:null,c:14737.25},fin:{d:null,c:29394.61}},
      PKG2:{conc:{d:67.04,c:11855.37},fin:{d:2852.0,c:27690.03}},
      PKG3:{conc:{d:36.85,c:10263.91},fin:{d:3.0,c:18789.85}}},
+
 
 
 
@@ -525,7 +526,7 @@ function render(){
           </span>
         </div>
       </div>
-      <div class="chart-area" style="height:130px"><canvas id="ch-trend-${wt.id}-${pkg}"></canvas></div>
+      <div class="chart-area" style="height:260px"><canvas id="ch-trend-${wt.id}-${pkg}"></canvas></div>
     </div>`).join('')}
   </div>`;
       }).join('')
@@ -552,7 +553,7 @@ function render(){
               </span>
             </div>
           </div>
-          <div class="chart-area" style="height:130px"><canvas id="ch-trend-${wt.id}-${pkg}"></canvas></div>
+          <div class="chart-area" style="height:260px"><canvas id="ch-trend-${wt.id}-${pkg}"></canvas></div>
         </div>`).join('')}
       </div>
     </div>`;
